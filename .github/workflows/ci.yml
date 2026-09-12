@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# The workflow needs nothing but read access to the repository. The credentials
+# it uses are generated fresh for the run and thrown away with the runner.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync --dev
+
+      - name: ruff
+        run: |
+          uv run ruff check scripts
+          uv run ruff format --check scripts
+
+      - name: Shell scripts parse cleanly
+        run: |
+          bash -n bootstrap/bootstrap.sh
+          bash -n tests/smoke.sh
+
+      - name: compose.yaml is valid
+        run: |
+          cp .env.example .env
+          uv run python scripts/generate_secrets.py .env
+          docker compose --profile bootstrap --profile test config --quiet
+
+      - name: No credentials committed
+        # A tracked .env is the one mistake this repository cannot recover from,
+        # so it fails the build rather than waiting to be noticed in review.
+        run: |
+          if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+            echo "::error::.env is tracked by git. Remove it and rotate every credential in it."
+            exit 1
+          fi
+          if git grep -nI -E '(CHANGE_ME_[a-z_]+=|AKIA[0-9A-Z]{16})' -- . ':!.env.example'; then
+            echo "::error::something that looks like a credential is committed."
+            exit 1
+          fi
+
+  stack:
+    name: Stack (bootstrap + access control)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Generate throwaway credentials for this run
+        run: |
+          cp .env.example .env
+          uv run python scripts/generate_secrets.py .env
+
+      - name: Start the store
+        run: make up
+
+      - name: Bootstrap buckets, policies and keys
+        run: make bootstrap
+
+      # Idempotency is a real requirement, not a nice-to-have: the bootstrap
+      # runs on every deploy. If the second run diverges from the first, it
+      # would drift a live store.
+      - name: Bootstrap again (must be idempotent)
+        run: make bootstrap
+
+      - name: Access control holds
+        run: make test
+
+      - name: Store logs
+        if: failure()
+        run: docker compose logs rustfs
+
+      - name: Tear down
+        if: always()
+        run: docker compose --profile bootstrap --profile test down --volumes

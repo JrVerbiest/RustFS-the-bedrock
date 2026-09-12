@@ -1,0 +1,26 @@
+[project]
+name = "bedrock"
+version = "0.1.0"
+description = "An S3-compatible object store: RustFS in Docker, with least-privilege buckets, keys and lifecycle rules."
+readme = "README.md"
+requires-python = ">=3.12"
+# No runtime dependencies on purpose. The store, the bootstrap and the smoke
+# test all run in containers; the only thing on the host is
+# scripts/generate_secrets.py, which is standard library only.
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+# D = pydocstyle: the numpy convention is enforced, not just aspired to.
+select = ["F", "I", "B", "UP", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"

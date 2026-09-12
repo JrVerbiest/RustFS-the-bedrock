@@ -1,0 +1,100 @@
+# Bedrock — an S3-compatible object store with least-privilege access.
+#
+# One long-running service, two one-shot jobs behind Compose profiles, so the
+# default `docker compose up` starts the store and nothing else:
+#
+#   (no profile)        rustfs      the S3-compatible object store
+#   --profile bootstrap bootstrap   creates buckets, policies and keys (idempotent)
+#   --profile test      smoke       proves the policies actually deny what they must
+#
+# `make up` / `make bootstrap` / `make test` wrap these; see the Makefile.
+name: bedrock
+
+# The two one-shot jobs are the same container with a different entrypoint, so
+# they are described once here and merged into both below.
+x-mc: &mc
+  image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+  depends_on:
+    rustfs:
+      condition: service_healthy
+  environment:
+    RUSTFS_INTERNAL_ENDPOINT: http://rustfs:9000
+    RUSTFS_ROOT_USER: ${RUSTFS_ROOT_USER:?}
+    RUSTFS_ROOT_PASSWORD: ${RUSTFS_ROOT_PASSWORD:?}
+  env_file:
+    - .env
+  networks: [bedrock]
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  # ── The object store ───────────────────────────────────────────────────────
+  rustfs:
+    image: rustfs/rustfs:1.0.0-beta.12
+    container_name: bedrock-rustfs
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ROOT_USER:?set RUSTFS_ROOT_USER in .env}
+      RUSTFS_SECRET_KEY: ${RUSTFS_ROOT_PASSWORD:?set RUSTFS_ROOT_PASSWORD in .env}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
+      RUSTFS_OBS_LOGGER_LEVEL: ${RUSTFS_LOG_LEVEL:-info}
+      # The console ships a permissive CORS default. Nothing browser-based is
+      # meant to reach this store, so close it.
+      RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS: ${RUSTFS_CONSOLE_CORS:-http://127.0.0.1:9001}
+    ports:
+      # Loopback only — see RUSTFS_BIND_ADDRESS in .env.example.
+      - "${RUSTFS_BIND_ADDRESS:-127.0.0.1}:${RUSTFS_S3_PORT:-9000}:9000"
+      - "${RUSTFS_BIND_ADDRESS:-127.0.0.1}:${RUSTFS_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rustfs-data:/data
+      - rustfs-logs:/logs
+    healthcheck:
+      # /health is unauthenticated and returns 200 once the S3 API is serving.
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks: [bedrock]
+    security_opt:
+      - no-new-privileges:true
+
+  # ── Bootstrap: buckets, policies, keys, versioning, lifecycle ──────────────
+  # Runs to completion and exits. Idempotent: re-running reconciles the desired
+  # state rather than failing on what already exists.
+  #
+  # mc's default entrypoint is `mc` itself; override it to run our script.
+  # /bin/bash, not /bin/sh: the script needs arrays, `${var^^}` and `${!ref}`.
+  bootstrap:
+    <<: *mc
+    container_name: bedrock-bootstrap
+    profiles: [bootstrap]
+    entrypoint: ["/bin/bash", "/bootstrap/bootstrap.sh"]
+    volumes:
+      - ./bootstrap:/bootstrap:ro
+
+  # ── Smoke test: does least privilege actually hold? ────────────────────────
+  smoke:
+    <<: *mc
+    container_name: bedrock-smoke
+    profiles: [test]
+    entrypoint: ["/bin/bash", "/tests/smoke.sh"]
+    volumes:
+      - ./tests:/tests:ro
+      # buckets.conf is the list of buckets to assert against, so the smoke
+      # test checks exactly what the bootstrap created.
+      - ./bootstrap:/bootstrap:ro
+
+volumes:
+  # Named volumes, not bind mounts: the data directory is the store's own
+  # on-disk format and belongs on the volume the host provides, not in a
+  # directory that gets synced or backed up by accident.
+  rustfs-data:
+    name: bedrock-rustfs-data
+  rustfs-logs:
+    name: bedrock-rustfs-logs
+
+networks:
+  bedrock:
+    name: bedrock
