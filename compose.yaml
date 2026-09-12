@@ -13,7 +13,7 @@ name: bedrock
 # The two one-shot jobs are the same container with a different entrypoint, so
 # they are described once here and merged into both below.
 x-mc: &mc
-  image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+  image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
   depends_on:
     rustfs:
       condition: service_healthy
