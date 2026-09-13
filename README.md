@@ -1,5 +1,7 @@
 # RustFS — the bedrock
 
+[![Olympus](https://img.shields.io/badge/project-Olympus-8A2BE2.svg)](https://jrverbiest.eu/projects/olympus/olympus.html)
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![RustFS](https://img.shields.io/badge/RustFS-1.0.0--beta.12-orange.svg)](https://rustfs.com)
 [![Docker Compose](https://img.shields.io/badge/orchestration-Docker%20Compose-2496ED.svg)](https://docs.docker.com/compose/)
@@ -14,7 +16,7 @@ Not tied to any particular data product or pipeline — declare the buckets you
 want and it builds them.
 
 > [!WARNING]
-> **Not for production use.** This is a local development and experimentation
+> **Not for production use.** This is for **local development and experimentation** only.
 > store. It runs a single beta-version node with no replication, serves plain
 > HTTP with no TLS, keeps every credential in a plaintext `.env` on one machine,
 > and has no backup story. Treat anything in it as losable.
