@@ -223,8 +223,8 @@ def main() -> int:
         if not text.endswith("\n"):
             text += "\n"
         text += (
-            "\n# Added automatically from bootstrap/buckets.conf. Mirror these into\n"
-            "# .env.example (with CHANGE_ME placeholders, never real values).\n"
+            "\n# Added automatically from bootstrap/buckets.conf. Local to this\n"
+            "# deployment, like the buckets themselves; nothing to mirror.\n"
         )
         text += "".join(f"{var}={PLACEHOLDER}\n" for var in missing)
         path.write_text(text)

@@ -55,8 +55,8 @@ back the store you already had rather than whatever was released this week.
 ## How it works
 
 A **bucket** is a named storage area. Each is declared in
-[`bootstrap/buckets.conf`](bootstrap/buckets.conf) with a **class**, and the
-class alone decides which keys get created for it.
+`bootstrap/buckets.conf` with a **class**, and the class alone decides which
+keys get created for it.
 
 | Class | Keys created | What goes in it |
 | --- | --- | --- |
@@ -66,7 +66,9 @@ class alone decides which keys get created for it.
 A `restricted` bucket gets **no reader key at all**, so there is no credential
 anywhere that a reader could be handed.
 
-Declared out of the box, as a working example:
+Declared out of the box by
+[`bootstrap/buckets.conf.example`](bootstrap/buckets.conf.example), as a
+working example:
 
 | Bucket | Class | Contents |
 | --- | --- | --- |
@@ -90,10 +92,23 @@ be revoked without rotating the key every other reader shares.
 
 ### Where things live
 
-One file is the source of truth — [`bootstrap/buckets.conf`](bootstrap/buckets.conf).
-The builder creates from it, the credential helper generates from it, and the
-smoke test checks against it. Change that one file, re-run, and the other three
-follow. Nothing else needs editing to add, resize or retire a bucket.
+One file is the source of truth — `bootstrap/buckets.conf`. The builder
+creates from it, the credential helper generates from it, and the smoke test
+checks against it. Change that one file, re-run, and the other three follow.
+Nothing else needs editing to add, resize or retire a bucket.
+
+That file is **yours and gitignored**, exactly like `.env`: which buckets a
+deployment carries is that deployment's business, not something to publish.
+What the repository carries is an example of each:
+
+| Committed | Local, gitignored | Created by |
+| --- | --- | --- |
+| [`.env.example`](.env.example) | `.env` | `make secrets` — then filled with random credentials |
+| [`bootstrap/buckets.conf.example`](bootstrap/buckets.conf.example) | `bootstrap/buckets.conf` | any `make` target that needs it — a straight copy, ready to use |
+
+Declare your own buckets in `bootstrap/buckets.conf`; touch the `.example`
+only to change the starting point everyone gets. CI fails the build if either
+local file is ever committed.
 
 ## Commands
 

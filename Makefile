@@ -9,6 +9,10 @@
 #   make bootstrap   create buckets, policies and keys (idempotent)
 #   make test        prove least privilege holds
 #   make down        stop the store (data is kept)
+#
+# Two files are yours and gitignored; the repository carries an example of
+# each: .env (from .env.example) and bootstrap/buckets.conf (from
+# bootstrap/buckets.conf.example). Both are created on first use.
 
 SHELL := /bin/bash
 COMPOSE := docker compose
@@ -30,7 +34,18 @@ help: ## Show this help
 	@printf 'Now run: make secrets\n'
 	@exit 1
 
-secrets: ## Fill .env with strong random credentials (never overwrites real ones)
+# The bucket declaration is deployment state, like .env: the store you run is
+# yours, the store the repository describes is an example. So buckets.conf is
+# gitignored and buckets.conf.example is committed. Unlike .env, the example is
+# a complete, working declaration, so a missing file is copied into place and
+# the target carries on rather than stopping to ask for edits.
+BUCKETS_CONF := bootstrap/buckets.conf
+
+$(BUCKETS_CONF):
+	@printf 'No %s found. Creating one from %s.example ...\n' '$(BUCKETS_CONF)' '$(BUCKETS_CONF)'
+	@cp $(BUCKETS_CONF).example $(BUCKETS_CONF)
+
+secrets: $(BUCKETS_CONF) ## Fill .env with strong random credentials (never overwrites real ones)
 	@test -f .env || cp .env.example .env
 	@$(UV) run python scripts/generate_secrets.py .env
 
@@ -44,10 +59,10 @@ up: .env ## Start the object store
 	done
 	@$(COMPOSE) ps
 
-bootstrap: .env ## Create buckets, policies and keys (safe to re-run)
+bootstrap: .env $(BUCKETS_CONF) ## Create buckets, policies and keys (safe to re-run)
 	@$(COMPOSE) run --rm bootstrap
 
-test: .env ## Assert the access policies deny what they must
+test: .env $(BUCKETS_CONF) ## Assert the access policies deny what they must
 	@$(COMPOSE) run --rm smoke
 
 down: .env ## Stop the store; the data volume is kept
@@ -65,7 +80,7 @@ destroy: .env ## Stop the store AND DELETE ALL DATA. Asks first.
 
 # Recreates the containers, not the data: `down` without --volumes keeps
 # bedrock-rustfs-data. Use `make destroy` to throw the data away as well.
-rebuild: .env ## Pull the pinned images, recreate the containers, bootstrap and verify
+rebuild: .env $(BUCKETS_CONF) ## Pull the pinned images, recreate the containers, bootstrap and verify
 	@$(COMPOSE) --profile bootstrap --profile test pull
 	@$(COMPOSE) --profile bootstrap --profile test down
 	@$(MAKE) --no-print-directory up

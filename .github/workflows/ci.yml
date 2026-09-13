@@ -42,15 +42,20 @@ jobs:
       - name: compose.yaml is valid
         run: |
           cp .env.example .env
+          cp bootstrap/buckets.conf.example bootstrap/buckets.conf
           uv run python scripts/generate_secrets.py .env
           docker compose --profile bootstrap --profile test config --quiet
 
-      - name: No credentials committed
+      - name: No local-only files committed
         # A tracked .env is the one mistake this repository cannot recover from,
         # so it fails the build rather than waiting to be noticed in review.
         run: |
           if git ls-files --error-unmatch .env >/dev/null 2>&1; then
             echo "::error::.env is tracked by git. Remove it and rotate every credential in it."
+            exit 1
+          fi
+          if git ls-files --error-unmatch bootstrap/buckets.conf >/dev/null 2>&1; then
+            echo "::error::bootstrap/buckets.conf is tracked by git. Only buckets.conf.example belongs in the repository."
             exit 1
           fi
           if git grep -nI -E '(CHANGE_ME_[a-z_]+=|AKIA[0-9A-Z]{16})' -- . ':!.env.example'; then
@@ -72,6 +77,7 @@ jobs:
       - name: Generate throwaway credentials for this run
         run: |
           cp .env.example .env
+          cp bootstrap/buckets.conf.example bootstrap/buckets.conf
           uv run python scripts/generate_secrets.py .env
 
       - name: Start the store

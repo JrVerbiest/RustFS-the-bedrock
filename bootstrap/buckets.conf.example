@@ -1,4 +1,12 @@
-# The buckets this store manages, one per line:
+# The buckets this store manages, one per line — COMMITTED EXAMPLE.
+#
+# The store reads bootstrap/buckets.conf, which is gitignored: the buckets a
+# deployment carries are that deployment's business, the same way its .env is.
+# `make` copies this file into place the first time buckets.conf is missing.
+# Declare YOUR buckets in buckets.conf; edit this file only to change the
+# example everyone starts from.
+#
+# Format:
 #
 #   <bucket>  <noncurrent-version expiry in days>  <class>  [extra consumers]
 #
@@ -40,7 +48,7 @@
 #
 # ── Adding a bucket ──────────────────────────────────────────────────────────
 #
-#   1. add a line here
+#   1. add a line to bootstrap/buckets.conf   (not to this .example file)
 #   2. make secrets     (appends and fills the credentials it needs)
 #   3. make bootstrap
 #   4. make test

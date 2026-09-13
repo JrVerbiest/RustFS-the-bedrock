@@ -150,6 +150,9 @@ activemq-data/
 # Environments
 .env
 .envrc
+# The real bucket declaration is deployment state, like .env: local only.
+# The committed starting point is bootstrap/buckets.conf.example.
+bootstrap/buckets.conf
 .venv
 env/
 venv/
