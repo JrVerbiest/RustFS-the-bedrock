@@ -153,6 +153,10 @@ activemq-data/
 # The real bucket declaration is deployment state, like .env: local only.
 # The committed starting point is bootstrap/buckets.conf.example.
 bootstrap/buckets.conf
+# The ingestion jobs (which folder goes into which bucket) and their keys: local
+# only. The committed starting points are dlt/.dlt/*.toml.example.
+dlt/.dlt/config.toml
+dlt/.dlt/secrets.toml
 .venv
 env/
 venv/

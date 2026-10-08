@@ -1,0 +1,28 @@
+# dlt config for the ingestion jobs — COMMITTED EXAMPLE.
+#
+# Copy it to .dlt/config.toml, which is gitignored, and declare your jobs there:
+#
+#   cp .dlt/config.toml.example .dlt/config.toml
+#
+# Which data goes into which bucket, and under which contract, is this machine's
+# business, the same way ../.env and ../bootstrap/buckets.conf are. CI fails if
+# config.toml is committed.
+#
+# A job is one folder of CSV files into one bucket. Every section of a job is
+# named after it, and the job name is also the top-level folder it writes to in
+# the bucket.
+#
+#   uv run ingest <job>
+
+# ── example_csv: a folder of CSV files into the example-raw bucket ───────────
+[example_csv]
+folder = "/absolute/path/to/a/folder/with/csv/files"            # one <table>.csv per table
+contract = "/absolute/path/to/the/data-contract.odcs.yaml"      # audited before writing
+
+[example_csv.destination.filesystem]
+bucket_url = "s3://example-raw"
+
+[example_csv.destination.filesystem.credentials]
+endpoint_url = "http://127.0.0.1:9000"    # RUSTFS_ENDPOINT_URL in ../.env
+region_name = "us-east-1"
+# The access key and secret go in .dlt/secrets.toml, never here.

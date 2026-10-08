@@ -31,8 +31,12 @@ jobs:
 
       - name: ruff
         run: |
-          uv run ruff check scripts
-          uv run ruff format --check scripts
+          uv run ruff check scripts dlt
+          uv run ruff format --check scripts dlt
+
+      - name: Ingestion jobs (dlt) install and start
+        working-directory: dlt
+        run: uv run ingest --help
 
       - name: Shell scripts parse cleanly
         run: |
@@ -58,6 +62,12 @@ jobs:
             echo "::error::bootstrap/buckets.conf is tracked by git. Only buckets.conf.example belongs in the repository."
             exit 1
           fi
+          for f in dlt/.dlt/config.toml dlt/.dlt/secrets.toml; do
+            if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+              echo "::error::$f is tracked by git. Only the .example belongs in the repository; rotate any key it held."
+              exit 1
+            fi
+          done
           if git grep -nI -E '(CHANGE_ME_[a-z_]+=|AKIA[0-9A-Z]{16})' -- . ':!.env.example'; then
             echo "::error::something that looks like a credential is committed."
             exit 1

@@ -97,8 +97,8 @@ console: .env ## Print the console URL
 	@set -a; . ./.env; set +a; \
 	printf 'Console: http://%s:%s\n' "$${RUSTFS_BIND_ADDRESS:-127.0.0.1}" "$${RUSTFS_CONSOLE_PORT:-9001}"
 
-lint: ## Lint the credential helper and the shell scripts
-	@$(UV) run ruff check scripts
-	@$(UV) run ruff format --check scripts
+lint: ## Lint the credential helper, the ingestion package and the shell scripts
+	@$(UV) run ruff check scripts dlt
+	@$(UV) run ruff format --check scripts dlt
 	@bash -n bootstrap/bootstrap.sh
 	@bash -n tests/smoke.sh
