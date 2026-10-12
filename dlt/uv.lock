@@ -240,7 +240,7 @@ wheels = [
 ]
 
 [[package]]
-name = "bedrock-ingest"
+name = "bedrock-load"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

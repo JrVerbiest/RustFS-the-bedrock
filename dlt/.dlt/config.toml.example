@@ -1,4 +1,4 @@
-# dlt config for the ingestion jobs — COMMITTED EXAMPLE.
+# dlt config for the load jobs — COMMITTED EXAMPLE.
 #
 # Copy it to .dlt/config.toml, which is gitignored, and declare your jobs there:
 #
@@ -8,14 +8,16 @@
 # business, the same way ../.env and ../bootstrap/buckets.conf are. CI fails if
 # config.toml is committed.
 #
-# A job is one folder of CSV files into one bucket. Every section of a job is
-# named after it, and the job name is also the top-level folder it writes to in
-# the bucket.
+# A job is one folder of files into one bucket. Every section of a job is named
+# after it, and the job name is also the top-level folder it writes to in the
+# bucket. Its `format` ("csv" or "sav", "csv" when left out) picks how the files
+# are read and where they land; see README.md.
 #
-#   uv run ingest <job>
+#   uv run load <job>
 
 # ── example_csv: a folder of CSV files into the example-raw bucket ───────────
 [example_csv]
+format = "csv"
 folder = "/absolute/path/to/a/folder/with/csv/files"            # one <table>.csv per table
 contract = "/absolute/path/to/the/data-contract.odcs.yaml"      # audited before writing
 
@@ -26,3 +28,16 @@ bucket_url = "s3://example-raw"
 endpoint_url = "http://127.0.0.1:9000"    # RUSTFS_ENDPOINT_URL in ../.env
 region_name = "us-east-1"
 # The access key and secret go in .dlt/secrets.toml, never here.
+
+# ── example_sav: a folder of SPSS .sav files into the example-raw bucket ─────
+[example_sav]
+format = "sav"
+folder = "/absolute/path/to/a/folder/with/sav/files"            # not tested against a contract
+prefix = "prod/v1/2026"                                         # lands at s3://example-raw/prod/v1/2026/<name>.sav
+
+[example_sav.destination.filesystem]
+bucket_url = "s3://example-raw"
+
+[example_sav.destination.filesystem.credentials]
+endpoint_url = "http://127.0.0.1:9000"    # RUSTFS_ENDPOINT_URL in ../.env
+region_name = "us-east-1"

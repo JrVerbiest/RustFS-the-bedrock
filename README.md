@@ -107,7 +107,7 @@ What the repository carries is an example of each:
 | --- | --- | --- |
 | [`.env.example`](.env.example) | `.env` | `make secrets` — then filled with random credentials |
 | [`bootstrap/buckets.conf.example`](bootstrap/buckets.conf.example) | `bootstrap/buckets.conf` | any `make` target that needs it — a straight copy, ready to use |
-| [`dlt/.dlt/config.toml.example`](dlt/.dlt/config.toml.example) | `dlt/.dlt/config.toml` | you — which folder of CSV files goes into which bucket |
+| [`dlt/.dlt/config.toml.example`](dlt/.dlt/config.toml.example) | `dlt/.dlt/config.toml` | you — which folder of files goes into which bucket, in which format |
 | [`dlt/.dlt/secrets.toml.example`](dlt/.dlt/secrets.toml.example) | `dlt/.dlt/secrets.toml` | you — each job's bucket key, copied from `.env` |
 
 Declare your own buckets in `bootstrap/buckets.conf`; touch the `.example`
@@ -116,15 +116,10 @@ local file is ever committed.
 
 ## Getting data in
 
-[`dlt/`](dlt/) is a small [dlt](https://dlthub.com/docs/) package that puts
-CSV files, on local drive, into the buckets. A job is one folder of CSV files into one bucket,
-run with that bucket's own key, and it only ever adds files. It audits first:
-the files are tested against their data contract, and nothing is written unless
-every test passes. Then it lands each file byte for byte, with a metadata file
-recording when, from where and under which contract. See
-[dlt/README.md](dlt/README.md).
+[`dlt/`](dlt/) is a small [dlt](https://dlthub.com/docs/) package that puts files on a local drive, CSV or SPSS `.sav`, into the buckets.
+See [dlt/README.md](dlt/README.md).
 
-This package will be extend in future to ingest data from other sources.
+This package will be extended in future to load data from other sources.
 
 ## Commands
 

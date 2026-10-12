@@ -1,7 +1,7 @@
 [project]
-name = "bedrock-ingest"
+name = "bedrock-load"
 version = "0.1.0"
-description = "Ingest data into the bedrock's RustFS buckets with dlt: one job, one source, one bucket."
+description = "Load data into the bedrock's RustFS buckets with dlt: one job, one source, one bucket."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ingest = "bedrock_ingest.cli:main"
+load = "bedrock_load.cli:main"
 
 [dependency-groups]
 dev = [

@@ -1,12 +1,12 @@
-"""Run one ingestion job: audit a folder of CSV files, then land them unchanged in a bucket.
+"""Run one load job: check a folder of files, then land them unchanged in a bucket.
 
 A job is a group of sections in `.dlt/config.toml` and `.dlt/secrets.toml`, all named after
 the job (see README.md). The job name is also the dlt pipeline name and the dataset: the
-top-level folder the job writes to in the bucket.
+top-level folder the job writes to in the bucket. Its `format` picks the module that reads
+and lands its files; everything else about a job is the same for every format.
 """
 
 import argparse
-import csv
 import json
 import tempfile
 from datetime import UTC, datetime
@@ -14,7 +14,19 @@ from pathlib import Path
 
 import dlt
 
-from bedrock_ingest.audit import audit
+from bedrock_load import load_csv, load_sav
+
+LOADERS = {"csv": load_csv, "sav": load_sav}
+"""The module for each `format`. Each one has the same three members:
+
+SETTINGS
+    What a job of that format needs in `[<job>]` besides `folder`.
+check(settings)
+    Check the files before anything is written. Return the data contract they passed, or
+    None for a format that is not tested against one.
+files(pipeline, spec, settings, out)
+    Return the files dlt lands, as `(path, table, columns)`.
+"""
 
 
 def land(path: Path, table: str, columns: list[str]):
@@ -43,18 +55,12 @@ def land(path: Path, table: str, columns: list[str]):
     )
 
 
-def header(path: Path) -> list[str]:
-    """Return the column names on the first line of the CSV file at `path`."""
-    with path.open(newline="", encoding="utf-8-sig") as f:
-        return next(csv.reader(f), [])
-
-
 def run(job: str):
-    """Run one job: audit its CSV files, then add them and their metadata to its bucket.
+    """Run one job: check its files, then add them and their metadata to its bucket.
 
-    Only the files of the tables in the contract are written, and only if every check
-    passes. Bucket keys can put, get and list, but not delete. So every run appends under a
-    new load id, and dlt is told not to clean anything up, in the bucket or on this machine.
+    Nothing is written unless the format's check passes. Bucket keys can put, get and list, but not
+    delete. So every run appends under a new load id, and dlt is told not to clean anything
+    up, in the bucket or on this machine.
 
     Parameters
     ----------
@@ -69,38 +75,43 @@ def run(job: str):
     Raises
     ------
     SystemExit
-        If the job has no `folder` or `contract`, or the audit fails.
+        If the job's `format` is unknown, it is missing a setting, or its files fail the
+        check or cannot be landed.
     """
-    folder = dlt.config.get(f"{job}.folder")
-    contract = dlt.config.get(f"{job}.contract")
-    if not folder or not contract:
-        raise SystemExit(f"[{job}] needs `folder` and `contract` in .dlt/config.toml")
+    file_format = dlt.config.get(f"{job}.format") or "csv"
+    loader = LOADERS.get(file_format)
+    if loader is None:
+        raise SystemExit(f'[{job}] `format` is one of {", ".join(LOADERS)}, not "{file_format}"')
+    keys = ("folder", *loader.SETTINGS)
+    settings = {key: dlt.config.get(f"{job}.{key}") for key in keys}
+    missing = [f"`{key}`" for key, value in settings.items() if not value]
+    if missing:
+        raise SystemExit(f"[{job}] needs {', '.join(missing)} in .dlt/config.toml")
 
-    spec = audit(contract, folder)
-    metadata = {
-        "ingested_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "source_location": folder,
-        "data_contract": spec.get("id"),
-        "data_contract_version": spec.get("version"),
-    }
-
-    dlt.config["load.delete_completed_jobs"] = True  # keep no local copy of the data
-    pipeline = dlt.pipeline(
-        pipeline_name=job,
-        dataset_name=job,
-        destination=dlt.destinations.filesystem(max_state_files=0),  # never prune old state
-    )
     with tempfile.TemporaryDirectory() as tmp:
+        spec = loader.check(settings) or {}  # {}: no contract, so its id and version are null
+        metadata = {
+            "ingested_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "source_location": settings["folder"],
+            "data_contract": spec.get("id"),
+            "data_contract_version": spec.get("version"),
+        }
         metadata_file = Path(tmp) / "_metadata.jsonl"
         metadata_file.write_text(json.dumps(metadata) + "\n")
-        csv_files = [Path(folder) / f"{table['name']}.csv" for table in spec["schema"]]
-        resources = [land(path, path.stem, header(path)) for path in csv_files]
+
+        dlt.config["load.delete_completed_jobs"] = True  # keep no local copy of the data
+        pipeline = dlt.pipeline(
+            pipeline_name=job,
+            dataset_name=job,
+            destination=dlt.destinations.filesystem(max_state_files=0),  # never prune old state
+        )
+        resources = [land(*file) for file in loader.files(pipeline, spec, settings, tmp)]
         resources.append(land(metadata_file, "_metadata", list(metadata)))
         return pipeline.run(resources, write_disposition="append")  # never replace
 
 
 def main() -> None:
-    """Run the job named on the command line: `uv run ingest <job>`."""
-    parser = argparse.ArgumentParser(prog="ingest", description="Run one ingestion job.")
+    """Run the job named on the command line: `uv run load <job>`."""
+    parser = argparse.ArgumentParser(prog="load", description="Run one load job.")
     parser.add_argument("job", help="name of the job's section in .dlt/config.toml")
     print(run(parser.parse_args().job))

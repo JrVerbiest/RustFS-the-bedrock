@@ -1,1 +1,1 @@
-"""Ingest data into the bedrock's RustFS buckets with dlt."""
+"""Load data into the bedrock's RustFS buckets with dlt."""
