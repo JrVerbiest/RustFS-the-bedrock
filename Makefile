@@ -102,3 +102,4 @@ lint: ## Lint the credential helper, the dlt load package and the shell scripts
 	@$(UV) run ruff format --check scripts dlt
 	@bash -n bootstrap/bootstrap.sh
 	@bash -n tests/smoke.sh
+	@bash -n scripts/delete_objects.sh

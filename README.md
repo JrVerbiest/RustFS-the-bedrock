@@ -175,6 +175,19 @@ This package will be extended in future to load data from other sources.
 | `make destroy` | Stop the store **and delete all data**; asks you to type `DESTROY` first |
 | `make lint` | Lint the credential helper, the dlt package and the shell scripts |
 
+### Deleting objects
+
+Only the root key can delete. `scripts/delete_objects.sh` runs `mc` with it inside the container, asks you to type the bucket name, then empties the bucket:
+
+```bash
+scripts/delete_objects.sh <bucket> --dry-run          # preview, deletes nothing
+scripts/delete_objects.sh <bucket>                    # delete all objects (old versions stay recoverable)
+scripts/delete_objects.sh <bucket> --versions         # also delete old versions, permanently
+scripts/delete_objects.sh <bucket> --remove-bucket    # empty, then remove the bucket (also remove its line from buckets.conf)
+```
+
+`--yes` skips the prompt.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
